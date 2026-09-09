@@ -68,3 +68,11 @@ fn test_fcs_wraps_on_overflow() {
 
     assert_eq!(fcs, 9);
 }
+
+#[test]
+fn test_sd1_frame() {
+    let telegram = Telegram::new_sd1(0x05, 0x02, 0x49);
+
+    assert_eq!(telegram.name, "SD1");
+    assert_eq!(telegram.bytes, vec![0x10, 0x05, 0x02, 0x49, 0x50, 0x16]);
+}
