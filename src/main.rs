@@ -1,4 +1,7 @@
+use std::assert_eq;
+
 const SD1_START_DELIMITER: u8 = 0x10;
+const SD4_START_DELIMITER: u8 = 0xDC;
 const END_DELIMITER: u8 = 0x16;
 
 struct Telegram {
@@ -22,6 +25,12 @@ impl Telegram {
         let bytes = vec![SD1_START_DELIMITER, da, sa, fc, fcs, END_DELIMITER];
 
         Self::new("SD1", bytes)
+    }
+
+    fn new_sd4(da: u8, sa: u8) -> Self {
+        let bytes = vec![SD4_START_DELIMITER, da, sa];
+
+        Self::new("SD4", bytes)
     }
 
     fn print(&self) {
@@ -50,9 +59,11 @@ fn calculate_fcs(da: u8, sa: u8, fc: u8) -> u8 {
 fn main() {
     let telegram = Telegram::new_sd1(0x05, 0x02, 0x49);
     let fcs = calculate_fcs(0x05, 0x02, 0x49);
+    let token = Telegram::new_sd4(0x05, 0x02);
 
     println!("FCS = {fcs:02X}");
     telegram.print();
+    token.print();
 }
 
 #[test]
@@ -75,4 +86,15 @@ fn test_sd1_frame() {
 
     assert_eq!(telegram.name, "SD1");
     assert_eq!(telegram.bytes, vec![0x10, 0x05, 0x02, 0x49, 0x50, 0x16]);
+}
+
+#[test]
+fn test_sd4_frame() {
+    // create SD4 telegram
+    let telegram = Telegram::new_sd4(0x13, 0x42);
+
+    // assert its name
+    assert_eq!(telegram.name, "SD4");
+    // assert its byte vector
+    assert_eq!(telegram.bytes, vec![0xDC, 0x13, 0x42]);
 }
