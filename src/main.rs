@@ -1,3 +1,6 @@
+const SD1_START_DELIMITER: u8 = 0x10;
+const END_DELIMITER: u8 = 0x16;
+
 struct Telegram {
     name: String,
     bytes: Vec<u8>,
@@ -16,10 +19,7 @@ impl Telegram {
     fn new_sd1(da: u8, sa: u8, fc: u8) -> Self {
         let fcs = calculate_fcs(da, sa, fc);
 
-        let bytes = vec![
-            0x10, // SD1 start delimiter
-            da, sa, fc, fcs, 0x16, // End delimiter
-        ];
+        let bytes = vec![SD1_START_DELIMITER, da, sa, fc, fcs, END_DELIMITER];
 
         Self::new("SD1", bytes)
     }
