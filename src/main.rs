@@ -17,7 +17,11 @@ impl Telegram {
             bytes, // move Vec<u8> into bytes
         }
     }
-
+    /*
+        PROFIBUS SD1 frame:
+        SD1   DA   SA   FC  FCS  ED
+        10    xx   xx   xx   xx   16
+    */
     fn new_sd1(da: u8, sa: u8, fc: u8) -> Self {
         let fcs = calculate_fcs(&[da, sa, fc]);
 
@@ -25,9 +29,13 @@ impl Telegram {
 
         Self::new("SD1", bytes)
     }
-
+    /*
+        PROFIBUS SD2 frame:
+        SD2  LE LEr SD2 DA  SA  FC  DATA  FCS ED
+        68   xx xx  xx  xx  xx  xx  [xx]  XX  16
+    */
     fn new_sd2(da: u8, sa: u8, fc: u8, data: Vec<u8>) -> Self {
-        let le: u8 = 3 + data.len() as u8;
+        let le: u8 = 3 + data.len() as u8; // Length of the part covered by the FCS: DA + SA + FC + DATA
 
         // Build the part covered by the FCS:
         // DA + SA + FC + DATA
@@ -66,11 +74,6 @@ impl Telegram {
 }
 
 /*
-PROFIBUS SD1 frame:
-
-SD1   DA   SA   FC   FCS   ED
-10    xx   xx   xx   xx    16
-
 FCS = DA + SA + FC, wrapped to 8 bits
 */
 
@@ -115,6 +118,26 @@ fn test_sd1_frame() {
 
     assert_eq!(telegram.name, "SD1");
     assert_eq!(telegram.bytes, vec![0x10, 0x05, 0x02, 0x49, 0x50, 0x16]);
+}
+
+#[test]
+fn test_sd2_frame() {
+    let telegram = Telegram::new_sd2(0x05, 0x02, 0x49, vec![0x01, 0x02, 0x03]);
+    assert_eq!(telegram.name, "SD2");
+    assert_eq!(
+        telegram.bytes,
+        vec![0x68, 0x06, 0x06, 0x68, 0x05, 0x02, 0x49, 0x01, 0x02, 0x03, 0x56, 0x16]
+    );
+}
+
+#[test]
+fn test_sd2_frame_no_data() {
+    let telegram = Telegram::new_sd2(0x05, 0x02, 0x49, vec![]);
+    assert_eq!(telegram.name, "SD2");
+    assert_eq!(
+        telegram.bytes,
+        vec![0x68, 0x03, 0x03, 0x68, 0x05, 0x02, 0x49, 0x50, 0x16]
+    );
 }
 
 #[test]
