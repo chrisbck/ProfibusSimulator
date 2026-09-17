@@ -132,8 +132,12 @@ impl ByteStream {
             byte_index: 0,
         }
     }
+}
 
-    fn next_byte(&mut self) -> Option<u8> {
+impl Iterator for ByteStream {
+    type Item = u8;
+
+    fn next(&mut self) -> Option<Self::Item> {
         if self.telegram_index >= self.telegrams.len() {
             return None;
         }
@@ -144,11 +148,11 @@ impl ByteStream {
             let temp_byte = telegram.bytes[self.byte_index];
             self.byte_index += 1;
 
-            return Some(temp_byte);
+            Some(temp_byte)
         } else {
             self.telegram_index += 1;
             self.byte_index = 0;
-            self.next_byte()
+            self.next()
         }
     }
 }
@@ -254,24 +258,27 @@ fn test_sd4_frame() {
 }
 
 #[test]
-fn test_next_byte() {
+fn test_byte_stream_iterator() {
     let telegrams = vec![
         Telegram::new_sd1(0x05, 0x02, 0x49),
-        Telegram::new_sd2(0x05, 0x02, 0x49, vec![0x01, 0x02, 0x03]).expect("SD2 should be valid"),
+        Telegram::new_sd4(0x05, 0x02),
     ];
 
-    let mut byte_stream = ByteStream::new(telegrams);
-    let mut bytes: Vec<u8> = vec![];
+    let byte_stream = ByteStream::new(telegrams);
 
-    while let Some(byte) = byte_stream.next_byte() {
-        bytes.push(byte);
-    }
+    let bytes: Vec<u8> = byte_stream.collect();
 
     assert_eq!(
         bytes,
-        vec![
-            0x10, 0x05, 0x02, 0x49, 0x50, 0x16, 0x68, 0x06, 0x06, 0x68, 0x05, 0x02, 0x49, 0x01,
-            0x02, 0x03, 0x56, 0x16,
-        ]
+        vec![0x10, 0x05, 0x02, 0x49, 0x50, 0x16, 0xDC, 0x05, 0x02,]
     );
+}
+
+#[test]
+fn test_empty_byte_stream() {
+    let byte_stream = ByteStream::new(vec![]);
+
+    let bytes: Vec<u8> = byte_stream.collect();
+
+    assert!(bytes.is_empty());
 }
