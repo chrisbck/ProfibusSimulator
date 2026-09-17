@@ -124,6 +124,35 @@ impl fmt::Display for Telegram {
     }
 }
 
+impl ByteStream {
+    fn new(telegrams: Vec<Telegram>) -> Self {
+        Self {
+            telegrams,
+            telegram_index: 0,
+            byte_index: 0,
+        }
+    }
+
+    fn next_byte(&mut self) -> Option<u8> {
+        if self.telegram_index >= self.telegrams.len() {
+            return None;
+        }
+
+        let telegram = &self.telegrams[self.telegram_index];
+
+        if self.byte_index < telegram.bytes.len() {
+            let temp_byte = telegram.bytes[self.byte_index];
+            self.byte_index += 1;
+
+            return Some(temp_byte);
+        } else {
+            self.telegram_index += 1;
+            self.byte_index = 0;
+            self.next_byte()
+        }
+    }
+}
+
 /*
 Calculate the FCS by summing all supplied bytes,
 wrapping the result to 8 bits.
@@ -222,4 +251,27 @@ fn test_sd4_frame() {
 
     assert_eq!(telegram.frame_type, FrameType::SD4);
     assert_eq!(telegram.bytes, vec![0xDC, 0x13, 0x42]);
+}
+
+#[test]
+fn test_next_byte() {
+    let telegrams = vec![
+        Telegram::new_sd1(0x05, 0x02, 0x49),
+        Telegram::new_sd2(0x05, 0x02, 0x49, vec![0x01, 0x02, 0x03]).expect("SD2 should be valid"),
+    ];
+
+    let mut byte_stream = ByteStream::new(telegrams);
+    let mut bytes: Vec<u8> = vec![];
+
+    while let Some(byte) = byte_stream.next_byte() {
+        bytes.push(byte);
+    }
+
+    assert_eq!(
+        bytes,
+        vec![
+            0x10, 0x05, 0x02, 0x49, 0x50, 0x16, 0x68, 0x06, 0x06, 0x68, 0x05, 0x02, 0x49, 0x01,
+            0x02, 0x03, 0x56, 0x16,
+        ]
+    );
 }
