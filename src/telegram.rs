@@ -5,6 +5,10 @@ pub const SD2_START_DELIMITER: u8 = 0x68;
 pub const SD4_START_DELIMITER: u8 = 0xDC;
 pub const END_DELIMITER: u8 = 0x16;
 
+pub const SD2_MIN_DATA_LEN: usize = 1;
+pub const SD2_MAX_DATA_LEN: usize = 246;
+pub const SD2_LE_OVERHEAD: usize = 3; // LE also counts DA + SA + FC
+
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum FrameType {
     SD1,
@@ -62,17 +66,17 @@ impl Telegram {
         68   xx xx  xx  xx  xx  xx  [xx]  XX  16
     */
     pub fn new_sd2(da: u8, sa: u8, fc: u8, data: Vec<u8>) -> Result<Self, String> {
-        if data.is_empty() {
+        if data.len() < SD2_MIN_DATA_LEN {
             return Err("SD2 requires at least one data byte.".to_string());
         }
 
-        if data.len() > 246 {
+        if data.len() > SD2_MAX_DATA_LEN {
             return Err("SD2 cannot contain more than 246 data bytes.".to_string());
         }
 
         // Length of the part covered by the FCS:
         // DA + SA + FC + DATA
-        let le: u8 = 3 + data.len() as u8;
+        let le = (SD2_LE_OVERHEAD + data.len()) as u8;
 
         // Build the part covered by the FCS:
         // DA + SA + FC + DATA
